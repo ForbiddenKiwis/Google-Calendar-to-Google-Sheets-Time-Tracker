@@ -71,6 +71,19 @@ function syncCalendarEvents(calendarId) {
     SpreadsheetApp.getUi().alert(`✅ Synced ${data.length} events from "${calendar.getName()}"`);
 }
 
+function setMenuName() {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getActiveSheet();
+    const newName = Browser.inputBox("Enter a new name for this sheet:")
+
+    if (newName && newName.trim() !== "") {
+        sheet.setName(newName);
+        SpreadsheetApp.getUi().alert(`Sheet renamed to "${newName}"`);
+    } else {
+        SpreadsheetApp.getUi().alert("Invalid name. Sheet not renamed.");
+    }
+}
+
 // /**
 //  * The main function used for the sync 
 //  * @param {Object} par the main parameter obj.
