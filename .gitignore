@@ -1,0 +1,15 @@
+# Ignore clasp files
+.clasp.json
+
+# Ignore node modules if using npm
+node_modules/
+
+# Ignore Mac system files
+.DS_Store
+
+# Ignore VS Code settings
+.vscode/
+
+# Ignore logs or temp files
+*.log
+*.tmp
