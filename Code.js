@@ -13,42 +13,65 @@ const onOpen = () => {
  */
 function run() {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("All Hours");
-    const calendarId = sheet.getRange("B2").getValue(); 
+    const icalUrl = sheet.getRange("B2").getValue(); 
     
-    if (!calendarId) {
-        SpreadsheetApp.getUi().alert("Please enter a Calendar ID in cell B2.");
+    if (!icalUrl || !icalUrl.startsWith("http")) {
+        SpreadsheetApp.getUi().alert("Please enter a valid ical URL in cell B2.");
         return;
     }
 
-    syncCalendarEvents(calendarId);
+    try {
+        syncICalEvents(icalUrl);
+    } catch (error) {
+        SpreadsheetApp.getUi().alert("❌ Error: " + error.message);
+    }
 }
 
-function syncCalendarEvents(calendarId) {
+function syncICalEvents(calendarId) {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("All Hours");
-    const calendar = CalendarApp.getCalendarById(calendarId);
 
     // Clear the prev data except the header row
     if (sheet.getLastRow() > 1) {
         sheet.getRange(2, 4, sheet.getLastRow() - 1, 7).clearContent();
     }
 
-    // Range of the calendar
-    const allEvents = calendar.getEvents(new Date(2000, 0, 1), new Date(2100, 0, 1));
+    const response = UrlFetchApp.fetch(icalUrl);
+  const content = response.getContentText();
 
-    if (allEvents.length === 0) {
-        SpreadsheetApp.getUi().alert("No Events found in the calendar.");
-        return;
+  const events = [];
+  const lines = content.split("\n");
+
+  let currentEvent = {};
+  for (let line of lines) {
+    line = line.trim();
+
+    if (line === "BEGIN:VEVENT") {
+      currentEvent = {};
+    } else if (line === "END:VEVENT") {
+      if (currentEvent.summary && currentEvent.start && currentEvent.end) {
+        events.push([
+          icalUrl,
+          currentEvent.summary,
+          new Date(currentEvent.start),
+          new Date(currentEvent.end),
+          '',
+          '',
+          'iCal Import'
+        ]);
+      }
+    } else if (line.startsWith("SUMMARY:")) {
+      currentEvent.summary = line.substring(8);
+    } else if (line.startsWith("DTSTART")) {
+      currentEvent.start = extractICalDate(line);
+    } else if (line.startsWith("DTEND")) {
+      currentEvent.end = extractICalDate(line);
     }
+  }
 
-    const data = allEvents.map(event => [
-        calendarId,
-        event.getTitle(),
-        event.getStartTime(),
-        event.getEndTime(),
-        '',
-        '',
-        calendar.getName()
-    ]);
+  if (events.length === 0) {
+    SpreadsheetApp.getUi().alert("No events found in the iCal feed.");
+    return;
+  }
 
     // Write to sheet starting at D2
     sheet.getRange(2, 4, data.length, data[0].length).setValues(data);
